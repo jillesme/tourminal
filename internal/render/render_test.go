@@ -6,10 +6,9 @@ import (
 )
 
 func TestSourceHighlighting(t *testing.T) {
-	t.Setenv("NO_COLOR", "")
 	results := make(map[bool]string)
 	for _, dark := range []bool{false, true} {
-		result, err := Source("main.go", "package main\n", dark)
+		result, err := Source("main.go", "package main\n", Options{Dark: dark})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -26,7 +25,7 @@ func TestSourceHighlighting(t *testing.T) {
 func TestMarkdown(t *testing.T) {
 	results := make(map[bool]string)
 	for _, dark := range []bool{false, true} {
-		result, err := Markdown("# Hello\n\n* one\n* two", 40, dark)
+		result, err := Markdown("# Hello\n\n* one\n* two", 40, Options{Dark: dark})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -57,12 +56,29 @@ func TestTerminalTextRemovesControlSequences(t *testing.T) {
 }
 
 func TestSourceSanitizesBeforeHighlighting(t *testing.T) {
-	t.Setenv("NO_COLOR", "1")
-	result, err := Source("main.go", "package main\x1b]0;owned\a\n", true)
+	result, err := Source("main.go", "package main\x1b]0;owned\a\n", Options{Dark: true, NoColor: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(result, "\x1b") || strings.Contains(result, "\a") {
 		t.Fatalf("unsafe source output: %q", result)
+	}
+}
+
+func TestNoColorRendering(t *testing.T) {
+	source, err := Source("main.go", "package main\n", Options{NoColor: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(source, "\x1b[") {
+		t.Fatalf("source contains ANSI escapes: %q", source)
+	}
+
+	markdown, err := Markdown("# Hello", 40, Options{NoColor: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(markdown, "\x1b[") {
+		t.Fatalf("markdown contains ANSI escapes: %q", markdown)
 	}
 }

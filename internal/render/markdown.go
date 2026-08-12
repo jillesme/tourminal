@@ -7,13 +7,16 @@ import (
 	"charm.land/glamour/v2"
 )
 
-func Markdown(markdown string, width int, dark bool) (string, error) {
+// Markdown renders a Markdown description for display in the terminal.
+func Markdown(markdown string, width int, options Options) (string, error) {
 	markdown = TerminalText(markdown)
 	if width < 20 {
 		width = 20
 	}
 	style := "light"
-	if dark {
+	if options.NoColor {
+		style = "notty"
+	} else if options.Dark {
 		style = "dark"
 	}
 	renderer, err := glamour.NewTermRenderer(

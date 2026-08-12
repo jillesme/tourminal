@@ -27,8 +27,8 @@ func (r *Result) addWarning(format string, args ...any) {
 	r.Warnings = append(r.Warnings, fmt.Sprintf(format, args...))
 }
 
-// Tour resolves every location and anchor in t against root.
-func Tour(root string, t *tour.Tour) Result {
+// Check resolves every location and anchor in t against root.
+func Check(root string, t *tour.Tour) Result {
 	var result Result
 
 	if _, err := workspace.EvaluateWhen(t.When); err != nil {

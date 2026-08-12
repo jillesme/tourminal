@@ -1,6 +1,7 @@
 package tour
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,37 +12,37 @@ import (
 
 const maxTourSize = 4 << 20
 
+// Load parses and structurally validates the CodeTour at path.
 func Load(path string) (*Tour, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("open tour: %w", err)
+		return nil, fmt.Errorf("open tour %q: %w", path, err)
 	}
 	defer f.Close()
 
 	data, err := io.ReadAll(io.LimitReader(f, maxTourSize+1))
 	if err != nil {
-		return nil, fmt.Errorf("read tour: %w", err)
+		return nil, fmt.Errorf("read tour %q: %w", path, err)
 	}
 	if len(data) > maxTourSize {
-		return nil, fmt.Errorf("tour is larger than %d MiB", maxTourSize>>20)
+		return nil, fmt.Errorf("tour %q is larger than %d MiB", path, maxTourSize>>20)
 	}
 
 	var result Tour
-	decoder := json.NewDecoder(newBytesReader(data))
+	decoder := json.NewDecoder(bytes.NewReader(data))
 	if err := decoder.Decode(&result); err != nil {
-		return nil, fmt.Errorf("parse tour JSON: %w", err)
+		return nil, fmt.Errorf("parse tour JSON %q: %w", path, err)
 	}
 	if err := ensureSingleJSONValue(decoder); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse tour JSON %q: %w", path, err)
 	}
-	result.Path = path
-	if diagnostics := Validate(&result); len(diagnostics) > 0 {
-		return nil, errors.New(diagnostics[0])
+	if diagnostics := validate(&result); len(diagnostics) > 0 {
+		return nil, fmt.Errorf("validate tour %q: %s", path, diagnostics[0])
 	}
 	return &result, nil
 }
 
-func Validate(t *Tour) []string {
+func validate(t *Tour) []string {
 	var diagnostics []string
 	if strings.TrimSpace(t.Title) == "" {
 		diagnostics = append(diagnostics, "tour title is required")
@@ -70,23 +71,6 @@ func Validate(t *Tour) []string {
 		}
 	}
 	return diagnostics
-}
-
-// Small local reader avoids exposing []byte ownership to json.Decoder callers.
-type bytesReader struct {
-	b []byte
-	i int
-}
-
-func newBytesReader(b []byte) *bytesReader { return &bytesReader{b: b} }
-
-func (r *bytesReader) Read(p []byte) (int, error) {
-	if r.i >= len(r.b) {
-		return 0, io.EOF
-	}
-	n := copy(p, r.b[r.i:])
-	r.i += n
-	return n, nil
 }
 
 func ensureSingleJSONValue(decoder *json.Decoder) error {

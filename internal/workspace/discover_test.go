@@ -55,7 +55,11 @@ func TestRootForTour(t *testing.T) {
 		filepath.Join(root, "main.tour"),
 	}
 	for _, path := range paths {
-		if got := RootForTour(path); got != root {
+		got, err := RootForTour(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != root {
 			t.Errorf("RootForTour(%s) = %s, want %s", path, got, root)
 		}
 	}

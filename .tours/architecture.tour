@@ -23,13 +23,13 @@
       "description": "### Resolve a step\n\nA step can point at a file, directory, URI, embedded source, or description alone. Resolution loads the requested content while enforcing workspace containment and bounded, UTF-8 source input."
     },
     {
-      "file": "internal/tui/model.go",
+      "file": "internal/tui/player.go",
       "pattern": "^func \\(m \\*Model\\) prepareStep\\(\\)",
       "description": "### Prepare the player\n\nThe player resolves the active step, syntax-highlights its source, renders its Markdown, and composes the description immediately above the target line. Tour commands become warnings and are never executed."
     },
     {
       "file": "internal/validation/validation.go",
-      "pattern": "^func Tour\\(",
+      "pattern": "^func Check\\(",
       "description": "### Trustworthy validation\n\nValidation resolves every anchor against the workspace. Missing files, stale lines, malformed or ambiguous patterns, invalid Git refs, and broken cross-tour links produce a non-zero exit for local use and CI."
     },
     {

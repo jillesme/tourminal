@@ -15,15 +15,21 @@ import (
 
 const maxSourceSize = 2 << 20
 
+// Kind identifies the location represented by a resolved step.
 type Kind int
 
 const (
+	// Content is a description-only step.
 	Content Kind = iota
+	// File is a source file or embedded source step.
 	File
+	// Directory is a directory-listing step.
 	Directory
+	// URI is an external URI step.
 	URI
 )
 
+// ResolvedStep contains display-ready location data for a tour step.
 type ResolvedStep struct {
 	Kind           Kind
 	Path           string
@@ -32,9 +38,9 @@ type ResolvedStep struct {
 	TargetLine     int
 	SelectionStart int
 	SelectionEnd   int
-	Warning        string
 }
 
+// Resolve resolves a CodeTour step against root without allowing path escape.
 func Resolve(root string, step tour.Step) (ResolvedStep, error) {
 	if step.Directory != "" {
 		path, err := safePath(root, step.Directory)

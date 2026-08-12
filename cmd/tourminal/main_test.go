@@ -68,6 +68,12 @@ func TestThemeConfiguration(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "theme must be auto, light, or dark") {
 		t.Fatalf("error = %v", err)
 	}
+
+	t.Setenv("NO_COLOR", "")
+	err = runWithIO([]string{"--no-color", "--theme", "sepia"}, &stdout, &stderr)
+	if err == nil || os.Getenv("NO_COLOR") != "" {
+		t.Fatalf("--no-color mutated process state: error=%v NO_COLOR=%q", err, os.Getenv("NO_COLOR"))
+	}
 }
 
 func TestValidateResolvesAnchors(t *testing.T) {
@@ -81,5 +87,40 @@ func TestValidateResolvesAnchors(t *testing.T) {
 	err := runWithIO([]string{"validate", path}, &stdout, &stderr)
 	if err == nil || !strings.Contains(stderr.String(), "invalid:") {
 		t.Fatalf("error=%v stdout=%q stderr=%q", err, stdout.String(), stderr.String())
+	}
+}
+
+func TestValidateWorkspaceAndTourLinks(t *testing.T) {
+	root := t.TempDir()
+	tours := root + "/.tours"
+	if err := os.MkdirAll(tours, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	first := `{"title":"First","nextTour":"Second","steps":[{"description":"one"}]}`
+	second := `{"title":"Second","steps":[{"description":"two"}]}`
+	if err := os.WriteFile(tours+"/first.tour", []byte(first), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tours+"/second.tour", []byte(second), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if err := runWithIO([]string{"validate", root}, &stdout, &stderr); err != nil {
+		t.Fatalf("validate: %v, stderr=%q", err, stderr.String())
+	}
+	if strings.Count(stdout.String(), "valid:") != 2 {
+		t.Fatalf("unexpected validation output: %q", stdout.String())
+	}
+
+	broken := `{"title":"First","nextTour":"Missing","steps":[{"description":"one"}]}`
+	if err := os.WriteFile(tours+"/first.tour", []byte(broken), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	err := runWithIO([]string{"validate", root}, &stdout, &stderr)
+	if err == nil || !strings.Contains(stderr.String(), `nextTour "Missing" was not found`) {
+		t.Fatalf("error=%v stderr=%q", err, stderr.String())
 	}
 }

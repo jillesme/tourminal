@@ -30,7 +30,7 @@ func TestTourValidatesAnchors(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := Tour(root, &tour.Tour{Title: "x", Steps: []tour.Step{test.step}})
+			result := Check(root, &tour.Tour{Title: "x", Steps: []tour.Step{test.step}})
 			if !contains(result.Errors, test.want) {
 				t.Fatalf("errors=%v, want substring %q", result.Errors, test.want)
 			}
@@ -43,7 +43,7 @@ func TestTourAcceptsUniquePatternAndWarnsAboutCommands(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte("package main\nfunc main() {}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result := Tour(root, &tour.Tour{Title: "x", Steps: []tour.Step{{
+	result := Check(root, &tour.Tour{Title: "x", Steps: []tour.Step{{
 		Description: "x", File: "main.go", Pattern: "^func main", Commands: []string{"workbench.action.files.save"},
 	}}})
 	if len(result.Errors) != 0 || !contains(result.Warnings, "will not execute") {
