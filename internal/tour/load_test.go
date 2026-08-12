@@ -30,6 +30,28 @@ func TestLoadAndLabels(t *testing.T) {
 	}
 }
 
+func TestStepLabelFallbacks(t *testing.T) {
+	tests := []struct {
+		name string
+		step Step
+		want string
+	}{
+		{name: "title", step: Step{Title: "Explicit"}, want: "Explicit"},
+		{name: "marker", step: Step{MarkerTitle: "Marker"}, want: "Marker"},
+		{name: "directory", step: Step{Directory: "internal"}, want: "internal"},
+		{name: "file", step: Step{File: "main.go"}, want: "main.go"},
+		{name: "URI", step: Step{URI: "https://example.com"}, want: "https://example.com"},
+		{name: "number", step: Step{}, want: "Step 7"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := test.step.Label(7); got != test.want {
+				t.Fatalf("Label = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
 func TestLoadRejectsInvalidTour(t *testing.T) {
 	tests := []struct {
 		name, contents, want string
@@ -41,9 +63,13 @@ func TestLoadRejectsInvalidTour(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := Load(writeTour(t, test.contents))
+			path := writeTour(t, test.contents)
+			_, err := Load(path)
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("error = %v, want substring %q", err, test.want)
+			}
+			if !strings.Contains(err.Error(), path) {
+				t.Fatalf("error does not identify %q: %v", path, err)
 			}
 		})
 	}

@@ -22,6 +22,8 @@ func ValidateGitRef(root, ref string) error {
 	return nil
 }
 
+// GitRefWarning explains when the workspace does not match a tour's pinned
+// ref. An empty result means no warning is needed.
 func GitRefWarning(root, wanted string) string {
 	if wanted == "" || wanted == "HEAD" {
 		return ""

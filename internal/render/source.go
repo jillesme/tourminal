@@ -2,7 +2,6 @@ package render
 
 import (
 	"bytes"
-	"os"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/formatters"
@@ -10,9 +9,10 @@ import (
 	"github.com/alecthomas/chroma/v2/styles"
 )
 
-func Source(filename, source string, dark bool) (string, error) {
+// Source applies syntax highlighting appropriate for filename.
+func Source(filename, source string, options Options) (string, error) {
 	source = TerminalText(source)
-	if os.Getenv("NO_COLOR") != "" {
+	if options.NoColor {
 		return source, nil
 	}
 	lexer := lexers.Match(filename)
@@ -25,7 +25,7 @@ func Source(filename, source string, dark bool) (string, error) {
 		return source, err
 	}
 	styleName := "github"
-	if dark {
+	if options.Dark {
 		styleName = "github-dark"
 	}
 	style := styles.Get(styleName)

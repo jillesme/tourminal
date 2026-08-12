@@ -78,9 +78,6 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 	if *showSkill {
 		return skillCommand(nil, stdout, stderr)
 	}
-	if *noColor {
-		_ = os.Setenv("NO_COLOR", "1")
-	}
 	themeMode, err := tui.ParseThemeMode(*themeName)
 	if err != nil {
 		return err
@@ -97,7 +94,10 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 		if err != nil {
 			return err
 		}
-		root = workspace.RootForTour(abs)
+		root, err = workspace.RootForTour(abs)
+		if err != nil {
+			return err
+		}
 		refs = []workspace.TourRef{{Path: abs, Title: loaded.Title, Description: loaded.Description, Primary: loaded.IsPrimary}}
 	} else {
 		if flags.NArg() > 1 {
@@ -119,7 +119,12 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 		}
 	}
 
-	model, err := tui.New(root, refs, *step, themeMode)
+	config := tui.Config{
+		StartStep: *step,
+		Theme:     themeMode,
+		NoColor:   *noColor || os.Getenv("NO_COLOR") != "",
+	}
+	model, err := tui.New(root, refs, config)
 	if err != nil {
 		return err
 	}
@@ -198,7 +203,11 @@ func validateCommand(args []string, stdout, stderr io.Writer) error {
 			if err != nil {
 				return err
 			}
-			return reportTourValidation(workspace.RootForTour(abs), abs, loaded, stdout, stderr)
+			root, err := workspace.RootForTour(abs)
+			if err != nil {
+				return err
+			}
+			return reportTourValidation(root, abs, loaded, stdout, stderr)
 		}
 	}
 
@@ -227,7 +236,7 @@ func validateCommand(args []string, stdout, stderr io.Writer) error {
 			continue
 		}
 		loadedTours = append(loadedTours, loaded)
-		result := validation.Tour(root, loaded)
+		result := validation.Check(root, loaded)
 		for _, warning := range result.Warnings {
 			fmt.Fprintf(stderr, "warning: %s: %s\n", render.TerminalLine(ref.Path), render.TerminalLine(warning))
 		}
@@ -250,7 +259,7 @@ func validateCommand(args []string, stdout, stderr io.Writer) error {
 }
 
 func reportTourValidation(root, path string, loaded *tour.Tour, stdout, stderr io.Writer) error {
-	result := validation.Tour(root, loaded)
+	result := validation.Check(root, loaded)
 	for _, warning := range result.Warnings {
 		fmt.Fprintf(stderr, "warning: %s: %s\n", render.TerminalLine(path), render.TerminalLine(warning))
 	}

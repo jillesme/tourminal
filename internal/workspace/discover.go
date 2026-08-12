@@ -11,18 +11,20 @@ import (
 	"github.com/jillesme/tourminal/internal/tour"
 )
 
+// TourRef contains the metadata needed to list and open a discovered tour.
 type TourRef struct {
 	Path        string
 	Title       string
 	Description string
 	Primary     bool
-	When        string
 	Warning     string
 }
 
 var mainTourFiles = []string{".tour", filepath.Join(".vscode", "main.tour"), "main.tour"}
 var tourDirectories = []string{filepath.Join(".vscode", "tours"), filepath.Join(".github", "tours"), ".tours"}
 
+// ResolveRoot finds the nearest ancestor containing a standard CodeTour
+// location, starting from start.
 func ResolveRoot(start string) (string, error) {
 	if start == "" {
 		var err error
@@ -40,7 +42,7 @@ func ResolveRoot(start string) (string, error) {
 		return "", err
 	}
 	if !info.IsDir() {
-		return RootForTour(abs), nil
+		return RootForTour(abs)
 	}
 
 	for dir := abs; ; dir = filepath.Dir(dir) {
@@ -55,25 +57,29 @@ func ResolveRoot(start string) (string, error) {
 	return abs, nil
 }
 
-func RootForTour(path string) string {
-	abs, _ := filepath.Abs(path)
+// RootForTour returns the workspace root implied by a tour path.
+func RootForTour(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve tour path: %w", err)
+	}
 	dir := filepath.Dir(abs)
 	base := filepath.Base(abs)
 	if base == ".tour" || base == "main.tour" {
 		if filepath.Base(dir) == ".vscode" {
-			return filepath.Dir(dir)
+			return filepath.Dir(dir), nil
 		}
-		return dir
+		return dir, nil
 	}
 
 	for current := dir; ; current = filepath.Dir(current) {
 		if filepath.Base(current) == ".tours" {
-			return filepath.Dir(current)
+			return filepath.Dir(current), nil
 		}
 		if filepath.Base(current) == "tours" {
 			parent := filepath.Dir(current)
 			if base := filepath.Base(parent); base == ".vscode" || base == ".github" {
-				return filepath.Dir(parent)
+				return filepath.Dir(parent), nil
 			}
 		}
 		parent := filepath.Dir(current)
@@ -81,9 +87,10 @@ func RootForTour(path string) string {
 			break
 		}
 	}
-	return dir
+	return dir, nil
 }
 
+// Discover finds tours that apply to the current platform.
 func Discover(root string) ([]TourRef, []error) {
 	return discover(root, true)
 }
@@ -122,7 +129,7 @@ func discover(root string, filterWhen bool) ([]TourRef, []error) {
 		refs = append(refs, TourRef{
 			Path: path, Title: loaded.Title, Description: loaded.Description,
 			Primary: loaded.IsPrimary || isImplicitPrimary(loaded.Title),
-			When:    loaded.When, Warning: warning,
+			Warning: warning,
 		})
 	}
 
@@ -134,7 +141,7 @@ func discover(root string, filterWhen bool) ([]TourRef, []error) {
 	}
 	for _, rel := range tourDirectories {
 		dir := filepath.Join(root, rel)
-		_ = filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		walkErr := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
 				if os.IsNotExist(err) {
 					return nil
@@ -150,6 +157,9 @@ func discover(root string, filterWhen bool) ([]TourRef, []error) {
 			}
 			return nil
 		})
+		if walkErr != nil && !os.IsNotExist(walkErr) {
+			diagnostics = append(diagnostics, fmt.Errorf("walk tour directory %s: %w", dir, walkErr))
+		}
 	}
 
 	sort.SliceStable(refs, func(i, j int) bool {

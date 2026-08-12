@@ -38,7 +38,7 @@ func TestThemeModes(t *testing.T) {
 	}
 	refs := []workspace.TourRef{{Path: tourPath, Title: "Theme"}}
 
-	light, err := New(root, refs, 1, ThemeLight)
+	light, err := New(root, refs, Config{StartStep: 1, Theme: ThemeLight})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestThemeModes(t *testing.T) {
 		t.Fatal("explicit light mode should use the light palette without querying the terminal")
 	}
 
-	dark, err := New(root, refs, 1, ThemeDark)
+	dark, err := New(root, refs, Config{StartStep: 1, Theme: ThemeDark})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestThemeModes(t *testing.T) {
 		t.Fatal("light and dark modes rendered identical Markdown")
 	}
 
-	auto, err := New(root, refs, 1, ThemeAuto)
+	auto, err := New(root, refs, Config{StartStep: 1, Theme: ThemeAuto})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,6 +67,139 @@ func TestThemeModes(t *testing.T) {
 	auto.Update(tea.BackgroundColorMsg{Color: color.White})
 	if auto.dark {
 		t.Fatal("auto mode did not switch to the light palette")
+	}
+
+	plain, err := New(root, refs, Config{NoColor: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain.themeMode != ThemeAuto || plain.Init() != nil {
+		t.Fatal("zero-value theme should be automatic without querying when color is disabled")
+	}
+	if strings.Contains(plain.View().Content, "\x1b[") {
+		t.Fatalf("no-color view contains ANSI escapes: %q", plain.View().Content)
+	}
+
+	if _, err := New(root, refs, Config{Theme: "sepia"}); err == nil {
+		t.Fatal("expected an invalid configured theme to fail")
+	}
+}
+
+func TestKeyboardStateTransitions(t *testing.T) {
+	root := t.TempDir()
+	tourPath := filepath.Join(root, "keys.tour")
+	contents := `{"title":"Keys","steps":[{"description":"First"},{"description":"Second"}]}`
+	if err := os.WriteFile(tourPath, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(root, []workspace.TourRef{{Path: tourPath, Title: "Keys"}}, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	press(t, m, "n")
+	if m.stepIndex != 1 {
+		t.Fatalf("next step index = %d", m.stepIndex)
+	}
+	press(t, m, "p")
+	if m.stepIndex != 0 {
+		t.Fatalf("previous step index = %d", m.stepIndex)
+	}
+	press(t, m, "g")
+	if !m.stepPicker {
+		t.Fatal("step picker did not open")
+	}
+	press(t, m, "j")
+	press(t, m, "enter")
+	if m.stepPicker || m.stepIndex != 1 {
+		t.Fatalf("picker state=%v step=%d", m.stepPicker, m.stepIndex)
+	}
+	press(t, m, "n")
+	if m.screen != screenFinished || !strings.Contains(ansi.Strip(m.View().Content), "Tour complete") {
+		t.Fatal("tour did not reach the finished screen")
+	}
+	press(t, m, "p")
+	if m.screen != screenPlayer || m.stepIndex != 1 {
+		t.Fatal("previous did not return from the finished screen")
+	}
+	press(t, m, "?")
+	if !m.showHelp || !strings.Contains(ansi.Strip(m.View().Content), "Tourminal help") {
+		t.Fatal("help did not open")
+	}
+	press(t, m, "esc")
+	if m.showHelp {
+		t.Fatal("help did not close")
+	}
+}
+
+func TestTourPickerAndLinkedTourErrors(t *testing.T) {
+	root := t.TempDir()
+	firstPath := filepath.Join(root, "first.tour")
+	secondPath := filepath.Join(root, "second.tour")
+	writeTestTour(t, firstPath, `{"title":"First","nextTour":"Second","steps":[{"description":"First step"}]}`)
+	writeTestTour(t, secondPath, `{"title":"Second","steps":[{"description":"Second step"}]}`)
+	refs := []workspace.TourRef{{Path: firstPath, Title: "First"}, {Path: secondPath, Title: "Second"}}
+
+	m, err := New(root, refs, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.screen != screenTours || !strings.Contains(ansi.Strip(m.View().Content), "Choose a CodeTour") {
+		t.Fatal("multiple tours did not open the tour picker")
+	}
+	press(t, m, "j")
+	press(t, m, "enter")
+	if m.tour.Title != "Second" {
+		t.Fatalf("selected tour = %q", m.tour.Title)
+	}
+
+	if err := m.startTourAt(0, 1); err != nil {
+		t.Fatal(err)
+	}
+	m.nextStep()
+	if m.tour.Title != "Second" {
+		t.Fatalf("linked tour = %q", m.tour.Title)
+	}
+
+	if err := m.startTourAt(0, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(secondPath); err != nil {
+		t.Fatal(err)
+	}
+	m.nextStep()
+	if m.tour.Title != "First" || !strings.Contains(m.stepError, "open next tour") ||
+		!strings.Contains(ansi.Strip(m.View().Content), "Step warning") {
+		t.Fatalf("linked-tour failure was not surfaced: tour=%q error=%q", m.tour.Title, m.stepError)
+	}
+
+	writeTestTour(t, firstPath, `{"title":"First","nextTour":"Missing","steps":[{"description":"First step"}]}`)
+	refs = []workspace.TourRef{{Path: firstPath, Title: "First"}}
+	m, err = New(root, refs, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.nextStep()
+	if m.screen != screenPlayer || !strings.Contains(m.stepError, `next tour "Missing" was not found`) {
+		t.Fatalf("missing link error = %q", m.stepError)
+	}
+}
+
+func press(t *testing.T, m *Model, key string) {
+	t.Helper()
+	message := tea.KeyPressMsg(tea.Key{Text: key, Code: []rune(key)[0]})
+	if key == "enter" {
+		message = tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
+	} else if key == "esc" {
+		message = tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
+	}
+	m.Update(message)
+}
+
+func writeTestTour(t *testing.T, path, contents string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -81,7 +214,7 @@ func TestPlayerFollowsContentAndFileSteps(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m, err := New(root, []workspace.TourRef{{Path: tourPath, Title: "Walkthrough"}}, 1)
+	m, err := New(root, []workspace.TourRef{{Path: tourPath, Title: "Walkthrough"}}, Config{StartStep: 1})
 	if err != nil {
 		t.Fatal(err)
 	}

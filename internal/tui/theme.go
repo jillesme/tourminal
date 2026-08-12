@@ -7,14 +7,19 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+// ThemeMode selects how Tourminal chooses terminal colors.
 type ThemeMode string
 
 const (
-	ThemeAuto  ThemeMode = "auto"
+	// ThemeAuto asks the terminal whether its background is light or dark.
+	ThemeAuto ThemeMode = "auto"
+	// ThemeLight uses colors intended for a light terminal background.
 	ThemeLight ThemeMode = "light"
-	ThemeDark  ThemeMode = "dark"
+	// ThemeDark uses colors intended for a dark terminal background.
+	ThemeDark ThemeMode = "dark"
 )
 
+// ParseThemeMode parses a user-provided theme name.
 func ParseThemeMode(value string) (ThemeMode, error) {
 	mode := ThemeMode(strings.ToLower(strings.TrimSpace(value)))
 	switch mode {
@@ -42,7 +47,10 @@ type themeStyles struct {
 	selectedLine lipgloss.Style
 }
 
-func newThemeStyles(dark bool) themeStyles {
+func newThemeStyles(dark, noColor bool) themeStyles {
+	if noColor {
+		return themeStyles{}
+	}
 	pick := lipgloss.LightDark(dark)
 	accent := pick(lipgloss.Color("#006D87"), lipgloss.Color("#5CCFE6"))
 	muted := pick(lipgloss.Color("#5B6472"), lipgloss.Color("#8892A6"))

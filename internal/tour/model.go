@@ -1,6 +1,9 @@
 package tour
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // Position is a 1-based source position, matching the CodeTour schema.
 type Position struct {
@@ -8,11 +11,13 @@ type Position struct {
 	Character int `json:"character"`
 }
 
+// Selection identifies an inclusive source range.
 type Selection struct {
 	Start Position `json:"start"`
 	End   Position `json:"end"`
 }
 
+// Step describes one stop in a CodeTour.
 type Step struct {
 	Title       string     `json:"title,omitempty"`
 	Description string     `json:"description"`
@@ -29,6 +34,7 @@ type Step struct {
 	MarkerTitle string     `json:"markerTitle,omitempty"`
 }
 
+// Tour is the CodeTour document model supported by Tourminal.
 type Tour struct {
 	Schema      string `json:"$schema,omitempty"`
 	Title       string `json:"title"`
@@ -39,10 +45,9 @@ type Tour struct {
 	StepMarker  string `json:"stepMarker,omitempty"`
 	When        string `json:"when,omitempty"`
 	Steps       []Step `json:"steps"`
-
-	Path string `json:"-"`
 }
 
+// Label returns the best human-readable label available for the step.
 func (s Step) Label(number int) string {
 	if s.Title != "" {
 		return s.Title
@@ -69,19 +74,5 @@ func (s Step) Label(number int) string {
 	if s.URI != "" {
 		return s.URI
 	}
-	return "Step " + itoa(number)
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var b [20]byte
-	i := len(b)
-	for n > 0 {
-		i--
-		b[i] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(b[i:])
+	return "Step " + strconv.Itoa(number)
 }
