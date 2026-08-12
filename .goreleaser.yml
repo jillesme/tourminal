@@ -3,6 +3,25 @@ version: 2
 project_name: tourminal
 
 builds:
+  - id: tour
+    main: ./cmd/tourminal
+    binary: tour
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .FullCommit }}
+      - -X main.date={{ .Date }}
+
   - id: tourminal
     main: ./cmd/tourminal
     binary: tourminal
@@ -23,7 +42,10 @@ builds:
       - -X main.date={{ .Date }}
 
 archives:
-  - formats: [tar.gz]
+  - ids:
+      - tour
+      - tourminal
+    formats: [tar.gz]
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
     files:

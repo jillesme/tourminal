@@ -28,7 +28,7 @@ func TestSkillCommandAndFlag(t *testing.T) {
 func TestSkillCommandRejectsArguments(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	err := runWithIO([]string{"skill", "extra"}, &stdout, &stderr)
-	if err == nil || !strings.Contains(err.Error(), "usage: tourminal skill") {
+	if err == nil || !strings.Contains(err.Error(), "usage: tour skill") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -39,8 +39,11 @@ func TestHelpAndVersionSucceed(t *testing.T) {
 		if err := runWithIO(args, &stdout, &stderr); err != nil {
 			t.Fatalf("%v: %v", args, err)
 		}
-		if !strings.Contains(stderr.String(), "Usage:") {
+		if !strings.Contains(stderr.String(), "Usage: tour") {
 			t.Fatalf("%v: missing usage in %q", args, stderr.String())
+		}
+		if strings.Contains(stderr.String(), "Usage: tourminal") {
+			t.Fatalf("%v: help uses compatibility command in %q", args, stderr.String())
 		}
 	}
 	var stdout, stderr bytes.Buffer

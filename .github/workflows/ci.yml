@@ -32,7 +32,10 @@ jobs:
           fi
       - run: go vet ./...
       - run: go test -race ./...
-      - run: go build ./cmd/tourminal
+      - name: Build command and compatibility alias
+        run: |
+          go build -o tour ./cmd/tourminal
+          go build -o tourminal ./cmd/tourminal
 
   cross-build:
     runs-on: ubuntu-latest
@@ -52,4 +55,34 @@ jobs:
           CGO_ENABLED: "0"
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: go build ./cmd/tourminal
+        run: |
+          go build -o tour ./cmd/tourminal
+          go build -o tourminal ./cmd/tourminal
+
+  release-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot --clean
+      - name: Verify both command names are packaged
+        shell: bash
+        run: |
+          archive_count=0
+          for archive in dist/tourminal_*.tar.gz; do
+            test -f "$archive"
+            members="$(tar -tzf "$archive")"
+            grep -qx tour <<<"$members"
+            grep -qx tourminal <<<"$members"
+            archive_count=$((archive_count + 1))
+          done
+          test "$archive_count" -eq 4
