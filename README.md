@@ -7,6 +7,10 @@ Follow and create [Microsoft CodeTour](https://github.com/microsoft/codetour)
 walkthroughs from the terminal. Tourminal combines syntax-highlighted source,
 rendered Markdown explanations, and keyboard navigation in a single TUI.
 
+
+<img width="800" height="492" alt="CleanShot 2026-08-12 at 11 24 47" src="https://github.com/user-attachments/assets/3069f068-e67f-4733-b7a0-52c9baaf67ce" />
+
+
 ## Install
 
 ### Homebrew
