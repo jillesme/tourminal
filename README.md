@@ -15,26 +15,30 @@ rendered Markdown explanations, and keyboard navigation in a single TUI.
 brew install jillesme/tap/tourminal
 ```
 
+This installs the preferred `tour` command. The original `tourminal` command
+remains available as a compatibility alias.
+
 ### Release binaries
 
 Download a ready-to-run archive from the
 [latest release](https://github.com/jillesme/tourminal/releases/latest). Builds
-are provided for macOS and Linux on Intel and ARM, with SHA-256 checksums.
+are provided for macOS and Linux on Intel and ARM, with both executable names
+and SHA-256 checksums.
 
 ## Follow a tour
 
 Run Tourminal from a repository that contains CodeTours, or pass its path:
 
 ```sh
-tourminal
-tourminal /path/to/repository
+tour
+tour /path/to/repository
 ```
 
 Open a specific tour or begin at a particular step:
 
 ```sh
-tourminal --tour .tours/intro.tour
-tourminal --tour .tours/intro.tour --step 2
+tour --tour .tours/intro.tour
+tour --tour .tours/intro.tour --step 2
 ```
 
 Inside the player, use `n`/`p` for next/previous, `g` to choose a step,
@@ -43,7 +47,7 @@ steps, the Markdown description appears immediately above the target line.
 
 Tourminal detects light and dark terminal backgrounds automatically. If a
 terminal cannot report its background reliably, select one explicitly with
-`tourminal --theme light`, `tourminal --theme dark`, or the
+`tour --theme light`, `tour --theme dark`, or the
 `TOURMINAL_THEME` environment variable.
 
 Tourminal discovers tours in the standard locations:
@@ -57,17 +61,17 @@ Tourminal ships its authoring instructions inside the binary. Ask a coding
 agent to load them before creating or editing a tour:
 
 ```text
-Create a CodeTour for the request lifecycle. Run `tourminal skill` first and
+Create a CodeTour for the request lifecycle. Run `tour skill` first and
 follow the instructions it prints. Validate the finished tour with Tourminal.
 ```
 
 The agent can load the skill with:
 
 ```sh
-tourminal skill
+tour skill
 ```
 
-`tourminal --skill` is a convenience alias. The skill tells the agent how to
+`tour --skill` is a convenience alias. The skill tells the agent how to
 inspect the codebase, write useful descriptions, choose unique regex anchors
 for living tours, or pin a snapshot tour to `git rev-parse HEAD` and use exact
 line/selection anchors.
@@ -80,8 +84,8 @@ selection bounds, regex validity and uniqueness, absolute URIs, `when`
 expressions, pinned Git refs, and `nextTour` links.
 
 ```sh
-tourminal validate .
-tourminal validate .tours/intro.tour
+tour validate .
+tour validate .tours/intro.tour
 ```
 
 This command is suitable for CI and exits non-zero when a tour is invalid.
@@ -90,13 +94,13 @@ This command is suitable for CI and exits non-zero when a tour is invalid.
 
 | Command | Purpose |
 | --- | --- |
-| `tourminal [workspace]` | Discover and follow tours |
-| `tourminal --tour FILE` | Follow one `.tour` file |
-| `tourminal validate [PATH]` | Strictly validate a workspace or tour |
-| `tourminal skill` | Print the bundled AI authoring skill |
-| `tourminal version` | Print build version information |
+| `tour [workspace]` | Discover and follow tours |
+| `tour --tour FILE` | Follow one `.tour` file |
+| `tour validate [PATH]` | Strictly validate a workspace or tour |
+| `tour skill` | Print the bundled AI authoring skill |
+| `tour version` | Print build version information |
 
-Use `tourminal --help` for all flags.
+Use `tour --help` for all flags.
 
 ## Compatibility and safety
 
@@ -117,10 +121,9 @@ are not part of this release.
 Tourminal requires the Go version declared in `go.mod`.
 
 ```sh
-go install github.com/jillesme/tourminal/cmd/tourminal@latest
 go test -race ./...
 go vet ./...
-go build ./cmd/tourminal
+go build -o tour ./cmd/tourminal
 ```
 
 Releases are built by GoReleaser when a `v*` tag is pushed. CI tests macOS and

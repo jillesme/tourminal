@@ -24,9 +24,11 @@ var (
 	date    = "unknown"
 )
 
+const commandName = "tour"
+
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "tourminal:", render.TerminalLine(err.Error()))
+		fmt.Fprintln(os.Stderr, commandName+":", render.TerminalLine(err.Error()))
 		os.Exit(1)
 	}
 }
@@ -44,13 +46,13 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 	}
 	if len(args) > 0 && args[0] == "version" {
 		if len(args) != 1 {
-			return fmt.Errorf("usage: tourminal version")
+			return fmt.Errorf("usage: %s version", commandName)
 		}
 		fmt.Fprintln(stdout, versionString())
 		return nil
 	}
 
-	flags := flag.NewFlagSet("tourminal", flag.ContinueOnError)
+	flags := flag.NewFlagSet(commandName, flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	tourPath := flags.String("tour", "", "open a specific .tour file")
 	step := flags.Int("step", 1, "start at a 1-based step")
@@ -59,10 +61,10 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 	showSkill := flags.Bool("skill", false, "print the bundled tour-creation skill and exit")
 	showVersion := flags.Bool("version", false, "print version and exit")
 	flags.Usage = func() {
-		fmt.Fprintln(flags.Output(), "Usage: tourminal [flags] [workspace]")
-		fmt.Fprintln(flags.Output(), "       tourminal validate [workspace-or-tour]")
-		fmt.Fprintln(flags.Output(), "       tourminal skill")
-		fmt.Fprintln(flags.Output(), "       tourminal version")
+		fmt.Fprintf(flags.Output(), "Usage: %s [flags] [workspace]\n", commandName)
+		fmt.Fprintf(flags.Output(), "       %s validate [workspace-or-tour]\n", commandName)
+		fmt.Fprintf(flags.Output(), "       %s skill\n", commandName)
+		fmt.Fprintf(flags.Output(), "       %s version\n", commandName)
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
@@ -157,7 +159,7 @@ func versionString() string {
 func skillCommand(args []string, stdout, stderr io.Writer) error {
 	flags := flag.NewFlagSet("skill", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	flags.Usage = func() { fmt.Fprintln(flags.Output(), "Usage: tourminal skill") }
+	flags.Usage = func() { fmt.Fprintf(flags.Output(), "Usage: %s skill\n", commandName) }
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -165,7 +167,7 @@ func skillCommand(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	if flags.NArg() != 0 {
-		return fmt.Errorf("usage: tourminal skill")
+		return fmt.Errorf("usage: %s skill", commandName)
 	}
 	_, err := fmt.Fprint(stdout, skills.CreateCodeTour())
 	return err
@@ -174,7 +176,9 @@ func skillCommand(args []string, stdout, stderr io.Writer) error {
 func validateCommand(args []string, stdout, stderr io.Writer) error {
 	flags := flag.NewFlagSet("validate", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	flags.Usage = func() { fmt.Fprintln(flags.Output(), "Usage: tourminal validate [workspace-or-tour]") }
+	flags.Usage = func() {
+		fmt.Fprintf(flags.Output(), "Usage: %s validate [workspace-or-tour]\n", commandName)
+	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -182,7 +186,7 @@ func validateCommand(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	if flags.NArg() > 1 {
-		return fmt.Errorf("usage: tourminal validate [workspace-or-tour]")
+		return fmt.Errorf("usage: %s validate [workspace-or-tour]", commandName)
 	}
 	path := ""
 	if flags.NArg() == 1 {

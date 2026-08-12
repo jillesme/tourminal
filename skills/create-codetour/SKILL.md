@@ -43,8 +43,8 @@ Create a reader-first walkthrough that explains how a codebase works. Write a st
    - Confirm every referenced file and directory exists inside the workspace.
    - Compile each pattern mentally and search the target file to confirm it is unique. Use portable regular expressions without lookaround or backreferences.
    - Re-read the steps in order and remove jumps, repetition, and implementation trivia.
-   - Run `tourminal validate .tours/<name>.tour`.
-   - Fix every validation or resolution error before finishing. If practical, open it with `tourminal --tour .tours/<name>.tour` for a final visual check.
+   - Run `tour validate .tours/<name>.tour`.
+   - Fix every validation or resolution error before finishing. If practical, open it with `tour --tour .tours/<name>.tour` for a final visual check.
 
 6. Report the created path, step count, subject covered, and validation result.
 
