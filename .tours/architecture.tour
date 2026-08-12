@@ -1,0 +1,41 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Tourminal architecture",
+  "description": "Follow a CodeTour from the CLI into discovery, resolution, rendering, and validation.",
+  "isPrimary": true,
+  "steps": [
+    {
+      "description": "### Welcome to Tourminal\n\nTourminal follows the open Microsoft CodeTour format without requiring VS Code. This tour traces the path from command-line input to the source-and-description view you are using now."
+    },
+    {
+      "file": "cmd/tourminal/main.go",
+      "pattern": "^func runWithIO\\(",
+      "description": "### Command dispatch\n\nThe CLI keeps `validate`, `skill`, version output, and the interactive player behind one small dispatch boundary. Passing writers into this function also makes the non-interactive behavior straightforward to test."
+    },
+    {
+      "file": "internal/workspace/discover.go",
+      "pattern": "^func Discover\\(",
+      "description": "### Standard tour discovery\n\nDiscovery searches every location supported by CodeTour, evaluates safe platform conditions, and puts a primary tour first. `DiscoverAll` intentionally ignores the current platform during validation so CI checks every tour."
+    },
+    {
+      "file": "internal/resolver/resolver.go",
+      "pattern": "^func Resolve\\(",
+      "description": "### Resolve a step\n\nA step can point at a file, directory, URI, embedded source, or description alone. Resolution loads the requested content while enforcing workspace containment and bounded, UTF-8 source input."
+    },
+    {
+      "file": "internal/tui/model.go",
+      "pattern": "^func \\(m \\*Model\\) prepareStep\\(\\)",
+      "description": "### Prepare the player\n\nThe player resolves the active step, syntax-highlights its source, renders its Markdown, and composes the description immediately above the target line. Tour commands become warnings and are never executed."
+    },
+    {
+      "file": "internal/validation/validation.go",
+      "pattern": "^func Tour\\(",
+      "description": "### Trustworthy validation\n\nValidation resolves every anchor against the workspace. Missing files, stale lines, malformed or ambiguous patterns, invalid Git refs, and broken cross-tour links produce a non-zero exit for local use and CI."
+    },
+    {
+      "file": "skills/embed.go",
+      "pattern": "^func CreateCodeTour\\(",
+      "description": "### Agent-assisted authoring\n\nThe binary embeds a complete `create-codetour` skill and schema reference. `tourminal skill` prints a self-contained prompt so an agent can inspect a repository, author a stable walkthrough, and verify it with the same validator."
+    }
+  ]
+}

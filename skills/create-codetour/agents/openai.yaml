@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create CodeTour"
+  short_description: "Create guided CodeTour walkthroughs"
+  default_prompt: "Use $create-codetour to create a guided tour for this codebase."
