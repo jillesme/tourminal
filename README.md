@@ -9,26 +9,17 @@ rendered Markdown explanations, and keyboard navigation in a single TUI.
 
 ## Install
 
-Install the latest source with Go:
-
-```sh
-go install github.com/jillesme/tourminal/cmd/tourminal@latest
-```
-
-Install the latest release from the Homebrew tap:
+### Homebrew
 
 ```sh
 brew install jillesme/tap/tourminal
 ```
 
-Tagged releases also provide macOS and Linux binaries for Intel and ARM
-machines.
+### Release binaries
 
-To build the current checkout:
-
-```sh
-go build -o tourminal ./cmd/tourminal
-```
+Download a ready-to-run archive from the
+[latest release](https://github.com/jillesme/tourminal/releases/latest). Builds
+are provided for macOS and Linux on Intel and ARM, with SHA-256 checksums.
 
 ## Follow a tour
 
@@ -49,6 +40,11 @@ tourminal --tour .tours/intro.tour --step 2
 Inside the player, use `n`/`p` for next/previous, `g` to choose a step,
 arrow keys or `j`/`k` to scroll, `?` for help, and `q` to quit. For file
 steps, the Markdown description appears immediately above the target line.
+
+Tourminal detects light and dark terminal backgrounds automatically. If a
+terminal cannot report its background reliably, select one explicitly with
+`tourminal --theme light`, `tourminal --theme dark`, or the
+`TOURMINAL_THEME` environment variable.
 
 Tourminal discovers tours in the standard locations:
 
@@ -121,6 +117,7 @@ are not part of this release.
 Tourminal requires the Go version declared in `go.mod`.
 
 ```sh
+go install github.com/jillesme/tourminal/cmd/tourminal@latest
 go test -race ./...
 go vet ./...
 go build ./cmd/tourminal

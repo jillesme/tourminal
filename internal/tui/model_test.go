@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"image/color"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,64 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/jillesme/tourminal/internal/workspace"
 )
+
+func TestThemeModes(t *testing.T) {
+	for input, want := range map[string]ThemeMode{
+		"auto":    ThemeAuto,
+		" LIGHT ": ThemeLight,
+		"Dark":    ThemeDark,
+	} {
+		got, err := ParseThemeMode(input)
+		if err != nil {
+			t.Fatalf("ParseThemeMode(%q): %v", input, err)
+		}
+		if got != want {
+			t.Fatalf("ParseThemeMode(%q) = %q, want %q", input, got, want)
+		}
+	}
+	if _, err := ParseThemeMode("sepia"); err == nil {
+		t.Fatal("expected an invalid theme to fail")
+	}
+
+	root := t.TempDir()
+	tourPath := filepath.Join(root, "theme.tour")
+	contents := `{"title":"Theme","steps":[{"description":"# Theme\n\nReadable text"}]}`
+	if err := os.WriteFile(tourPath, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	refs := []workspace.TourRef{{Path: tourPath, Title: "Theme"}}
+
+	light, err := New(root, refs, 1, ThemeLight)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if light.dark || light.Init() != nil {
+		t.Fatal("explicit light mode should use the light palette without querying the terminal")
+	}
+
+	dark, err := New(root, refs, 1, ThemeDark)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !dark.dark || dark.Init() != nil {
+		t.Fatal("explicit dark mode should use the dark palette without querying the terminal")
+	}
+	if light.notesRender == dark.notesRender {
+		t.Fatal("light and dark modes rendered identical Markdown")
+	}
+
+	auto, err := New(root, refs, 1, ThemeAuto)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if auto.Init() == nil {
+		t.Fatal("auto mode should query the terminal background color")
+	}
+	auto.Update(tea.BackgroundColorMsg{Color: color.White})
+	if auto.dark {
+		t.Fatal("auto mode did not switch to the light palette")
+	}
+}
 
 func TestPlayerFollowsContentAndFileSteps(t *testing.T) {
 	root := t.TempDir()

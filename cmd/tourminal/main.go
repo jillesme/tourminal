@@ -55,6 +55,7 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 	tourPath := flags.String("tour", "", "open a specific .tour file")
 	step := flags.Int("step", 1, "start at a 1-based step")
 	noColor := flags.Bool("no-color", false, "disable color output")
+	themeName := flags.String("theme", defaultTheme(), "color theme: auto, light, or dark")
 	showSkill := flags.Bool("skill", false, "print the bundled tour-creation skill and exit")
 	showVersion := flags.Bool("version", false, "print version and exit")
 	flags.Usage = func() {
@@ -79,6 +80,10 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 	}
 	if *noColor {
 		_ = os.Setenv("NO_COLOR", "1")
+	}
+	themeMode, err := tui.ParseThemeMode(*themeName)
+	if err != nil {
+		return err
 	}
 
 	var root string
@@ -114,12 +119,19 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 		}
 	}
 
-	model, err := tui.New(root, refs, *step)
+	model, err := tui.New(root, refs, *step, themeMode)
 	if err != nil {
 		return err
 	}
 	_, err = tea.NewProgram(model).Run()
 	return err
+}
+
+func defaultTheme() string {
+	if value := strings.TrimSpace(os.Getenv("TOURMINAL_THEME")); value != "" {
+		return value
+	}
+	return string(tui.ThemeAuto)
 }
 
 func versionString() string {

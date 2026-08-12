@@ -7,22 +7,36 @@ import (
 
 func TestSourceHighlighting(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
-	result, err := Source("main.go", "package main\n")
-	if err != nil {
-		t.Fatal(err)
+	results := make(map[bool]string)
+	for _, dark := range []bool{false, true} {
+		result, err := Source("main.go", "package main\n", dark)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(result, "\x1b[") || !strings.Contains(result, "package") {
+			t.Fatalf("expected highlighted source, got %q", result)
+		}
+		results[dark] = result
 	}
-	if !strings.Contains(result, "\x1b[") || !strings.Contains(result, "package") {
-		t.Fatalf("expected highlighted source, got %q", result)
+	if results[false] == results[true] {
+		t.Fatal("light and dark syntax highlighting are identical")
 	}
 }
 
 func TestMarkdown(t *testing.T) {
-	result, err := Markdown("# Hello\n\n* one\n* two", 40)
-	if err != nil {
-		t.Fatal(err)
+	results := make(map[bool]string)
+	for _, dark := range []bool{false, true} {
+		result, err := Markdown("# Hello\n\n* one\n* two", 40, dark)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(result, "Hello") || !strings.Contains(result, "one") {
+			t.Fatalf("unexpected markdown: %q", result)
+		}
+		results[dark] = result
 	}
-	if !strings.Contains(result, "Hello") || !strings.Contains(result, "one") {
-		t.Fatalf("unexpected markdown: %q", result)
+	if results[false] == results[true] {
+		t.Fatal("light and dark Markdown rendering are identical")
 	}
 }
 
@@ -44,7 +58,7 @@ func TestTerminalTextRemovesControlSequences(t *testing.T) {
 
 func TestSourceSanitizesBeforeHighlighting(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
-	result, err := Source("main.go", "package main\x1b]0;owned\a\n")
+	result, err := Source("main.go", "package main\x1b]0;owned\a\n", true)
 	if err != nil {
 		t.Fatal(err)
 	}

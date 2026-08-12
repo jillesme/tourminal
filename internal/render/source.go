@@ -10,7 +10,7 @@ import (
 	"github.com/alecthomas/chroma/v2/styles"
 )
 
-func Source(filename, source string) (string, error) {
+func Source(filename, source string, dark bool) (string, error) {
 	source = TerminalText(source)
 	if os.Getenv("NO_COLOR") != "" {
 		return source, nil
@@ -24,7 +24,11 @@ func Source(filename, source string) (string, error) {
 	if err != nil {
 		return source, err
 	}
-	style := styles.Get("github-dark")
+	styleName := "github"
+	if dark {
+		styleName = "github-dark"
+	}
+	style := styles.Get(styleName)
 	if style == nil {
 		style = styles.Fallback
 	}

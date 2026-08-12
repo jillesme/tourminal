@@ -52,6 +52,24 @@ func TestHelpAndVersionSucceed(t *testing.T) {
 	}
 }
 
+func TestThemeConfiguration(t *testing.T) {
+	t.Setenv("TOURMINAL_THEME", "")
+	if got := defaultTheme(); got != "auto" {
+		t.Fatalf("default theme = %q, want auto", got)
+	}
+
+	t.Setenv("TOURMINAL_THEME", "light")
+	if got := defaultTheme(); got != "light" {
+		t.Fatalf("environment theme = %q, want light", got)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err := runWithIO([]string{"--theme", "sepia"}, &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "theme must be auto, light, or dark") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestValidateResolvesAnchors(t *testing.T) {
 	root := t.TempDir()
 	path := root + "/broken.tour"

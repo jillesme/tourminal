@@ -51,6 +51,9 @@ type Model struct {
 	height     int
 	compact    bool
 	hasCode    bool
+	themeMode  ThemeMode
+	dark       bool
+	styles     themeStyles
 
 	code        viewport.Model
 	notes       viewport.Model
@@ -66,15 +69,24 @@ type Model struct {
 	tourWarning string
 }
 
-func New(root string, refs []workspace.TourRef, startStep int) (*Model, error) {
+func New(root string, refs []workspace.TourRef, startStep int, theme ...ThemeMode) (*Model, error) {
 	if len(refs) == 0 {
 		return nil, fmt.Errorf("no CodeTours found in %s", root)
 	}
+	themeMode := ThemeAuto
+	if len(theme) > 0 {
+		themeMode = theme[0]
+	}
+	if themeMode != ThemeAuto && themeMode != ThemeLight && themeMode != ThemeDark {
+		return nil, fmt.Errorf("invalid theme %q", themeMode)
+	}
+	dark := themeMode != ThemeLight
 	m := &Model{
 		root: root, refs: refs, startStep: startStep,
 		width: 100, height: 30,
-		code:  viewport.New(viewport.WithWidth(60), viewport.WithHeight(24)),
-		notes: viewport.New(viewport.WithWidth(39), viewport.WithHeight(24)),
+		code:      viewport.New(viewport.WithWidth(60), viewport.WithHeight(24)),
+		notes:     viewport.New(viewport.WithWidth(39), viewport.WithHeight(24)),
+		themeMode: themeMode, dark: dark, styles: newThemeStyles(dark),
 	}
 	m.code.FillHeight = true
 	m.code.SoftWrap = false
@@ -98,10 +110,20 @@ func New(root string, refs []workspace.TourRef, startStep int) (*Model, error) {
 	return m, nil
 }
 
-func (m *Model) Init() tea.Cmd { return nil }
+func (m *Model) Init() tea.Cmd {
+	if m.themeMode == ThemeAuto {
+		return tea.RequestBackgroundColor
+	}
+	return nil
+}
 
 func (m *Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := message.(type) {
+	case tea.BackgroundColorMsg:
+		if m.themeMode == ThemeAuto {
+			m.setDarkTheme(msg.IsDark())
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.resize(msg.Width, msg.Height)
 		return m, nil
@@ -146,6 +168,17 @@ func (m *Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	return m, nil
+}
+
+func (m *Model) setDarkTheme(dark bool) {
+	if m.dark == dark {
+		return
+	}
+	m.dark = dark
+	m.styles = newThemeStyles(dark)
+	if m.tour != nil {
+		m.prepareStep()
+	}
 }
 
 func (m *Model) updatePlayerKey(key string) tea.Cmd {
@@ -296,14 +329,14 @@ func (m *Model) prepareStep() {
 
 	content := render.TerminalText(resolved.Source)
 	if resolved.Kind == resolver.File && content != "" {
-		if highlighted, highlightErr := render.Source(resolved.Path, content); highlightErr == nil {
+		if highlighted, highlightErr := render.Source(resolved.Path, content, m.dark); highlightErr == nil {
 			content = highlighted
 		} else if m.stepError == "" {
 			m.stepError = "syntax highlighting: " + highlightErr.Error()
 		}
 	}
 	if m.stepError != "" && content == "" {
-		content = errorStyle.Render("Unable to display this step\n\n" + render.TerminalText(m.stepError))
+		content = m.styles.error.Render("Unable to display this step\n\n" + render.TerminalText(m.stepError))
 	}
 	m.codeSource = content
 
@@ -350,20 +383,20 @@ func (m *Model) configureCodeViewport() {
 				return strings.Repeat(" ", digits+3)
 			}
 			marker := " "
-			style := gutterStyle
+			style := m.styles.gutter
 			if sourceLine == target {
 				marker = "▶"
-				style = activeGutterStyle
+				style = m.styles.activeGutter
 			}
 			return style.Render(fmt.Sprintf("%s %*d ", marker, digits, sourceLine))
 		}
 		m.code.StyleLineFunc = func(index int) lipgloss.Style {
 			line := m.sourceLineAt(index)
 			if selectionStart > 0 && line >= selectionStart && line <= selectionEnd {
-				return selectedLineStyle
+				return m.styles.selectedLine
 			}
 			if line == target {
-				return targetLineStyle
+				return m.styles.targetLine
 			}
 			return lipgloss.NewStyle()
 		}
@@ -396,9 +429,9 @@ func (m *Model) renderNotes() {
 	if m.hasCode {
 		width = m.code.Width() - m.sourceGutterWidth() - 4
 	}
-	markdown, err := render.Markdown(m.notesRaw, max(20, width))
+	markdown, err := render.Markdown(m.notesRaw, max(20, width), m.dark)
 	if err != nil {
-		markdown = m.notesRaw + "\n\n" + errorStyle.Render(err.Error())
+		markdown = m.notesRaw + "\n\n" + m.styles.error.Render(err.Error())
 	}
 	m.notesRender = markdown
 	m.notes.SetContent(markdown)
@@ -457,7 +490,7 @@ func (m *Model) inlineDescription() []string {
 		return nil
 	}
 	width := max(1, m.code.Width()-m.sourceGutterWidth())
-	separator := dividerStyle.Render(strings.Repeat("─", width))
+	separator := m.styles.divider.Render(strings.Repeat("─", width))
 	lines := []string{separator}
 	lines = append(lines, strings.Split(m.notesRender, "\n")...)
 	lines = append(lines, separator)
@@ -532,7 +565,7 @@ func (m *Model) View() tea.View {
 
 func (m *Model) playerView() string {
 	headerText := fmt.Sprintf(" Tourminal  %s  •  Step %d of %d ", render.TerminalLine(m.tour.Title), m.stepIndex+1, len(m.tour.Steps))
-	header := headerStyle.Width(m.width).Render(ansi.Truncate(headerText, m.width, "…"))
+	header := m.styles.header.Width(m.width).Render(ansi.Truncate(headerText, m.width, "…"))
 	var body string
 	if !m.hasCode {
 		body = m.pane("Tour description", m.notes.View(), m.focus == focusNotes, m.width)
@@ -540,14 +573,14 @@ func (m *Model) playerView() string {
 		body = m.pane(m.codeTitle, m.code.View(), true, m.width)
 	}
 	footerText := " n next  p previous  g steps  ↑/↓ scroll  ? help  q quit "
-	footer := footerStyle.Width(m.width).Render(ansi.Truncate(footerText, m.width, "…"))
+	footer := m.styles.footer.Width(m.width).Render(ansi.Truncate(footerText, m.width, "…"))
 	return header + "\n" + body + "\n" + footer
 }
 
 func (m *Model) pane(title, content string, active bool, width int) string {
-	style := paneTitleStyle
+	style := m.styles.paneTitle
 	if active {
-		style = activePaneTitleStyle
+		style = m.styles.activePane
 	}
 	title = render.TerminalLine(title)
 	title = style.Width(width).Render(ansi.Truncate(" "+title+" ", width, "…"))
@@ -555,14 +588,14 @@ func (m *Model) pane(title, content string, active bool, width int) string {
 }
 
 func (m *Model) tourPickerView() string {
-	lines := []string{titleStyle.Render("Choose a CodeTour"), ""}
+	lines := []string{m.styles.title.Render("Choose a CodeTour"), ""}
 	start, end := visibleWindow(m.tourCursor, len(m.refs), max(1, m.height-6))
 	for i := start; i < end; i++ {
 		prefix := "  "
-		style := normalItemStyle
+		style := m.styles.normalItem
 		if i == m.tourCursor {
 			prefix = "▶ "
-			style = selectedItemStyle
+			style = m.styles.selectedItem
 		}
 		primary := ""
 		if m.refs[i].Primary {
@@ -570,25 +603,25 @@ func (m *Model) tourPickerView() string {
 		}
 		lines = append(lines, style.Render(prefix+render.TerminalLine(m.refs[i].Title)+primary))
 		if i == m.tourCursor && m.refs[i].Description != "" {
-			lines = append(lines, mutedStyle.Render("    "+render.TerminalText(m.refs[i].Description)))
+			lines = append(lines, m.styles.muted.Render("    "+render.TerminalText(m.refs[i].Description)))
 		}
 	}
 	if m.stepError != "" {
-		lines = append(lines, "", errorStyle.Render(render.TerminalText(m.stepError)))
+		lines = append(lines, "", m.styles.error.Render(render.TerminalText(m.stepError)))
 	}
-	lines = append(lines, "", footerStyle.Render(" j/k move  Enter start  ? help  q quit "))
+	lines = append(lines, "", m.styles.footer.Render(" j/k move  Enter start  ? help  q quit "))
 	return frame(m.width, m.height, strings.Join(lines, "\n"))
 }
 
 func (m *Model) stepPickerView() string {
-	lines := []string{titleStyle.Render(render.TerminalLine(m.tour.Title) + " — Steps"), ""}
+	lines := []string{m.styles.title.Render(render.TerminalLine(m.tour.Title) + " — Steps"), ""}
 	start, end := visibleWindow(m.stepCursor, len(m.tour.Steps), max(1, m.height-5))
 	for i := start; i < end; i++ {
 		prefix := "  "
-		style := normalItemStyle
+		style := m.styles.normalItem
 		if i == m.stepCursor {
 			prefix = "▶ "
-			style = selectedItemStyle
+			style = m.styles.selectedItem
 		}
 		current := ""
 		if i == m.stepIndex {
@@ -596,12 +629,12 @@ func (m *Model) stepPickerView() string {
 		}
 		lines = append(lines, style.Render(fmt.Sprintf("%s%d. %s%s", prefix, i+1, render.TerminalLine(m.tour.Steps[i].Label(i+1)), current)))
 	}
-	lines = append(lines, "", footerStyle.Render(" j/k move  Enter open  Esc return  q quit "))
+	lines = append(lines, "", m.styles.footer.Render(" j/k move  Enter open  Esc return  q quit "))
 	return frame(m.width, m.height, strings.Join(lines, "\n"))
 }
 
 func (m *Model) helpView() string {
-	text := titleStyle.Render("Tourminal help") + `
+	text := m.styles.title.Render("Tourminal help") + `
 
 Tour navigation
   n, ], Space      next step
@@ -623,9 +656,9 @@ Tour commands are never executed automatically.`
 }
 
 func (m *Model) finishedView() string {
-	text := titleStyle.Render("Tour complete") + "\n\n" +
+	text := m.styles.title.Render("Tour complete") + "\n\n" +
 		fmt.Sprintf("You finished %s.\n\n", render.TerminalLine(m.tour.Title)) +
-		mutedStyle.Render("p: return to the last step   Enter/q: exit")
+		m.styles.muted.Render("p: return to the last step   Enter/q: exit")
 	return frame(m.width, m.height, text)
 }
 
@@ -676,23 +709,3 @@ func nextNumberedTour(title string, refs []workspace.TourRef) int {
 func frame(width, height int, content string) string {
 	return lipgloss.NewStyle().Width(max(1, width-4)).Height(max(1, height-2)).Padding(1, 2).Render(content)
 }
-
-var (
-	purple               = lipgloss.Color("#7C5CFC")
-	cyan                 = lipgloss.Color("#5CCFE6")
-	muted                = lipgloss.Color("#8892A6")
-	headerStyle          = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF")).Background(purple)
-	footerStyle          = lipgloss.NewStyle().Foreground(lipgloss.Color("#D7DCE2")).Background(lipgloss.Color("#252A34"))
-	titleStyle           = lipgloss.NewStyle().Bold(true).Foreground(cyan)
-	paneTitleStyle       = lipgloss.NewStyle().Bold(true).Foreground(muted).Background(lipgloss.Color("#1B1E26"))
-	activePaneTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#343B4A"))
-	dividerStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("#3A4150"))
-	mutedStyle           = lipgloss.NewStyle().Foreground(muted)
-	errorStyle           = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6B6B")).Bold(true)
-	normalItemStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#D7DCE2"))
-	selectedItemStyle    = lipgloss.NewStyle().Foreground(cyan).Bold(true)
-	gutterStyle          = lipgloss.NewStyle().Foreground(muted)
-	activeGutterStyle    = lipgloss.NewStyle().Foreground(cyan).Bold(true)
-	targetLineStyle      = lipgloss.NewStyle().Background(lipgloss.Color("#202A3C"))
-	selectedLineStyle    = lipgloss.NewStyle().Background(lipgloss.Color("#253856"))
-)
