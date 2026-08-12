@@ -15,13 +15,14 @@ Install the latest source with Go:
 go install github.com/jillesme/tourminal/cmd/tourminal@latest
 ```
 
-Tagged releases provide macOS and Linux binaries for Intel and Apple/ARM
-machines. A Homebrew tap is planned for the first release; its install command
-will be:
+Install the latest release from the Homebrew tap:
 
 ```sh
 brew install jillesme/tap/tourminal
 ```
+
+Tagged releases also provide macOS and Linux binaries for Intel and ARM
+machines.
 
 To build the current checkout:
 
