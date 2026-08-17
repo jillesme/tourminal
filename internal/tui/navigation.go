@@ -2,11 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/jillesme/tourminal/internal/follow"
 	"github.com/jillesme/tourminal/internal/tour"
 	"github.com/jillesme/tourminal/internal/workspace"
 )
@@ -146,34 +145,14 @@ func (m *Model) previousStep() {
 	}
 }
 
-var numberedTourPattern = regexp.MustCompile(`^#?(\d+)\s*[-:]`)
-
 func stepMarkerPrefix(title, explicit string) string {
-	if explicit != "" {
-		return explicit
-	}
-	match := numberedTourPattern.FindStringSubmatch(title)
-	if len(match) == 2 {
-		return "CT" + match[1]
-	}
-	return ""
+	return follow.StepMarkerPrefix(title, explicit)
 }
 
 func nextNumberedTour(title string, refs []workspace.TourRef) int {
-	match := numberedTourPattern.FindStringSubmatch(title)
-	if len(match) != 2 {
-		return -1
+	titles := make([]string, len(refs))
+	for index, ref := range refs {
+		titles[index] = ref.Title
 	}
-	number, err := strconv.Atoi(match[1])
-	if err != nil {
-		return -1
-	}
-	wanted := strconv.Itoa(number + 1)
-	for i, ref := range refs {
-		candidate := numberedTourPattern.FindStringSubmatch(ref.Title)
-		if len(candidate) == 2 && candidate[1] == wanted {
-			return i
-		}
-	}
-	return -1
+	return follow.NextNumberedTour(title, titles)
 }

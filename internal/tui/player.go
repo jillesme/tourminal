@@ -4,23 +4,17 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
+	"github.com/jillesme/tourminal/internal/follow"
 	"github.com/jillesme/tourminal/internal/render"
 	"github.com/jillesme/tourminal/internal/resolver"
 )
 
 func (m *Model) prepareStep() {
-	step := m.tour.Steps[m.stepIndex]
-	if step.File != "" && step.Line == 0 && step.Pattern == "" {
-		if marker := stepMarkerPrefix(m.tour.Title, m.tour.StepMarker); marker != "" {
-			step.Pattern = regexp.QuoteMeta(marker + "." + strconv.Itoa(m.stepIndex+1))
-		}
-	}
+	step := follow.EffectiveStep(m.tour, m.stepIndex)
 	resolved, err := resolver.Resolve(m.root, step)
 	m.resolved = resolved
 	m.stepError = ""

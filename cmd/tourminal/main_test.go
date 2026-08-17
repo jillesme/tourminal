@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -34,7 +35,7 @@ func TestSkillCommandRejectsArguments(t *testing.T) {
 }
 
 func TestHelpAndVersionSucceed(t *testing.T) {
-	for _, args := range [][]string{{"--help"}, {"validate", "--help"}, {"skill", "--help"}} {
+	for _, args := range [][]string{{"--help"}, {"validate", "--help"}, {"inspect", "--help"}, {"skill", "--help"}} {
 		var stdout, stderr bytes.Buffer
 		if err := runWithIO(args, &stdout, &stderr); err != nil {
 			t.Fatalf("%v: %v", args, err)
@@ -52,6 +53,34 @@ func TestHelpAndVersionSucceed(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "tourminal dev") {
 		t.Fatalf("version=%q", stdout.String())
+	}
+}
+
+func TestInspectCommandEmitsVersionedManifest(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(root+"/.tours", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	contents := `{"title":"Inspect","steps":[{"description":"Intro"}]}`
+	if err := os.WriteFile(root+"/.tours/intro.tour", []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if err := runWithIO([]string{"inspect", "--json", root}, &stdout, &stderr); err != nil {
+		t.Fatalf("inspect: %v, stderr=%q", err, stderr.String())
+	}
+	var result struct {
+		APIVersion int `json:"apiVersion"`
+		Tours      []struct {
+			Title string `json:"title"`
+		} `json:"tours"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("decode: %v, output=%q", err, stdout.String())
+	}
+	if result.APIVersion != 1 || len(result.Tours) != 1 || result.Tours[0].Title != "Inspect" {
+		t.Fatalf("unexpected manifest: %#v", result)
 	}
 }
 

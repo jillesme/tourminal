@@ -94,12 +94,28 @@ tour validate .tours/intro.tour
 
 This command is suitable for CI and exits non-zero when a tour is invalid.
 
+## Editor integrations
+
+Tourminal can emit a versioned JSON manifest containing discovered tours,
+warnings, linked-tour targets, and eagerly resolved step locations:
+
+```sh
+tour inspect --json .
+tour inspect --json --tour .tours/intro.tour
+```
+
+The manifest's `apiVersion` changes only when the integration contract changes
+incompatibly. Workspace file contents are not copied into the output; embedded
+content and directory listings are included because an editor cannot open them
+as regular files.
+
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
 | `tour [workspace]` | Discover and follow tours |
 | `tour --tour FILE` | Follow one `.tour` file |
+| `tour inspect --json [PATH]` | Emit a versioned manifest for editor integrations |
 | `tour validate [PATH]` | Strictly validate a workspace or tour |
 | `tour skill` | Print the bundled AI authoring skill |
 | `tour version` | Print build version information |
