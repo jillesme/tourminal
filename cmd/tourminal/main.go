@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/jillesme/tourminal/internal/manifest"
 	"github.com/jillesme/tourminal/internal/render"
 	"github.com/jillesme/tourminal/internal/tour"
 	"github.com/jillesme/tourminal/internal/tui"
@@ -41,6 +43,9 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 	if len(args) > 0 && args[0] == "validate" {
 		return validateCommand(args[1:], stdout, stderr)
 	}
+	if len(args) > 0 && args[0] == "inspect" {
+		return inspectCommand(args[1:], stdout, stderr)
+	}
 	if len(args) > 0 && args[0] == "skill" {
 		return skillCommand(args[1:], stdout, stderr)
 	}
@@ -63,6 +68,7 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 	flags.Usage = func() {
 		fmt.Fprintf(flags.Output(), "Usage: %s [flags] [workspace]\n", commandName)
 		fmt.Fprintf(flags.Output(), "       %s validate [workspace-or-tour]\n", commandName)
+		fmt.Fprintf(flags.Output(), "       %s inspect --json [workspace]\n", commandName)
 		fmt.Fprintf(flags.Output(), "       %s skill\n", commandName)
 		fmt.Fprintf(flags.Output(), "       %s version\n", commandName)
 		flags.PrintDefaults()
@@ -132,6 +138,63 @@ func runWithIO(args []string, stdout, stderr io.Writer) error {
 	}
 	_, err = tea.NewProgram(model).Run()
 	return err
+}
+
+func inspectCommand(args []string, stdout, stderr io.Writer) error {
+	flags := flag.NewFlagSet("inspect", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	tourPath := flags.String("tour", "", "inspect a specific .tour file")
+	flags.Bool("json", false, "emit the versioned JSON manifest (default)")
+	flags.Usage = func() {
+		fmt.Fprintf(flags.Output(), "Usage: %s inspect [--json] [--tour FILE] [workspace]\n", commandName)
+	}
+	if err := flags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return err
+	}
+	if flags.NArg() > 1 || (*tourPath != "" && flags.NArg() != 0) {
+		return fmt.Errorf("usage: %s inspect [--json] [--tour FILE] [workspace]", commandName)
+	}
+
+	var root string
+	var refs []workspace.TourRef
+	var diagnostics []error
+	if *tourPath != "" {
+		abs, err := filepath.Abs(*tourPath)
+		if err != nil {
+			return err
+		}
+		loaded, err := tour.Load(abs)
+		if err != nil {
+			return err
+		}
+		root, err = workspace.RootForTour(abs)
+		if err != nil {
+			return err
+		}
+		refs = []workspace.TourRef{{
+			Path: abs, Title: loaded.Title, Description: loaded.Description,
+			Primary: loaded.IsPrimary,
+		}}
+	} else {
+		start := ""
+		if flags.NArg() == 1 {
+			start = flags.Arg(0)
+		}
+		var err error
+		root, err = workspace.ResolveRoot(start)
+		if err != nil {
+			return err
+		}
+		refs, diagnostics = workspace.Discover(root)
+	}
+
+	encoder := json.NewEncoder(stdout)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(manifest.Build(root, refs, diagnostics))
 }
 
 func defaultTheme() string {
