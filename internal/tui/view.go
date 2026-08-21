@@ -158,10 +158,7 @@ func (m *Model) finishedView() string {
 }
 
 func visibleWindow(cursor, total, capacity int) (int, int) {
-	start := cursor - capacity/2
-	if start < 0 {
-		start = 0
-	}
+	start := max(cursor-capacity/2, 0)
 	end := min(total, start+capacity)
 	if end-start < capacity {
 		start = max(0, end-capacity)

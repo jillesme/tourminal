@@ -52,7 +52,7 @@ func (s Step) Label(number int) string {
 	if s.Title != "" {
 		return s.Title
 	}
-	for _, line := range strings.Split(strings.TrimSpace(s.Description), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(s.Description), "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "#") {
 			label := strings.TrimSpace(strings.TrimLeft(trimmed, "#"))

@@ -102,10 +102,10 @@ func Build(root string, refs []workspace.TourRef, diagnostics []error) Manifest 
 		entry := TourEntry{
 			Path: ref.Path, Title: item.Title, Description: item.Description,
 			Ref: item.Ref, Primary: ref.Primary, NextTour: item.NextTour,
-			Warning: strings.TrimSpace(ref.Warning + " " + workspace.GitRefWarning(root, item.Ref)),
-			Steps:   make([]StepEntry, 0, len(item.Steps)),
+			Warning:      strings.TrimSpace(ref.Warning + " " + workspace.GitRefWarning(root, item.Ref)),
+			NextTourPath: nextTourPath(item, loadedRefs, titles),
+			Steps:        make([]StepEntry, 0, len(item.Steps)),
 		}
-		entry.NextTourPath = nextTourPath(item, loadedRefs, titles)
 		for stepIndex, rawStep := range item.Steps {
 			effective := follow.EffectiveStep(item, stepIndex)
 			resolved, resolveErr := resolver.Resolve(root, effective)
