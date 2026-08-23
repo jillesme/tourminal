@@ -117,10 +117,7 @@ func (m *Model) centerTarget() {
 		// view whenever the terminal is tall enough for the complete block.
 		targetPosition = max(targetPosition, min(height-1, m.noteRows+1))
 	}
-	offset := m.targetRow - targetPosition
-	if offset < 0 {
-		offset = 0
-	}
+	offset := max(m.targetRow-targetPosition, 0)
 	m.code.SetYOffset(offset)
 }
 
