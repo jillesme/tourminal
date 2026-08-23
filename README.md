@@ -69,16 +69,22 @@ Create a CodeTour for the request lifecycle. Run `tour skill` first and
 follow the instructions it prints. Validate the finished tour with Tourminal.
 ```
 
-The agent can load the skill with:
+The agent can load the skill from the Tourminal binary:
 
 ```sh
 tour skill
 ```
 
-`tour --skill` is a convenience alias. The skill tells the agent how to
-inspect the codebase, write useful descriptions, choose unique regex anchors
-for living tours, or pin a snapshot tour to `git rev-parse HEAD` and use exact
-line/selection anchors.
+`tour --skill` is a convenience alias. Alternatively, install the skill into a
+supported coding agent with the [Skills CLI](https://skills.sh/):
+
+```sh
+npx skills add jillesme/tourminal --skill create-codetour
+```
+
+The skill tells the agent how to inspect the codebase, write useful
+descriptions, choose unique regex anchors for living tours, or pin a snapshot
+tour to `git rev-parse HEAD` and use exact line/selection anchors.
 
 ## Validate tours
 

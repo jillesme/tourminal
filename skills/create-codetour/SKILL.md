@@ -14,10 +14,11 @@ Create a reader-first walkthrough that explains how a codebase works. Write a st
    - Trace the actual control or data flow for the requested topic.
    - Infer the audience and learning goal from the request and repository. Ask only when the missing choice would materially change the tour.
 
-2. Design a short narrative.
+2. Design a right-sized narrative.
    - Start with a content-only orientation step when readers need context.
    - Follow the concept in a useful order, such as entry point → orchestration → core logic → boundary or test.
-   - Prefer 4–10 purposeful steps for a focused tour. Do not annotate every function.
+   - Use the smallest number of purposeful steps that explains the concept clearly and completely. A focused topic may need only a few steps; a complex topic may need 20 or more.
+   - Do not add steps only to annotate every function. Include a location only when it advances the reader's understanding.
    - Make each step explain why the location matters and how it connects to adjacent steps; do not merely restate the code.
 
 3. Choose a versioning and anchoring strategy.
