@@ -113,7 +113,9 @@ tour inspect --json --tour .tours/intro.tour
 The manifest's `apiVersion` changes only when the integration contract changes
 incompatibly. Workspace file contents are not copied into the output; embedded
 content and directory listings are included because an editor cannot open them
-as regular files.
+as regular files. Steps that fail resolution contain an `error` and resolve as
+`content`, without a file path; integrations should display the error and avoid
+opening a source for that step.
 
 ## Commands
 
@@ -144,7 +146,9 @@ are not part of this release.
 
 ## Development
 
-Tourminal requires the Go version declared in `go.mod`.
+Tourminal requires the Go version declared in `go.mod`. Keep
+`skills/create-codetour` as regular files: Go embeds these instructions at build
+time and cannot follow a symlink in their place.
 
 ```sh
 go test -race ./...

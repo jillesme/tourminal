@@ -1,8 +1,11 @@
 package manifest
 
 import (
+	"encoding/json"
+	"github.com/jillesme/tourminal/internal/tour"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jillesme/tourminal/internal/workspace"
@@ -47,5 +50,47 @@ func TestBuildResolvesStepsAndLinks(t *testing.T) {
 	}
 	if got := firstEntry.Steps[1]; got.Resolved.Kind != "embedded" || got.Resolved.Source != "one\ntwo" {
 		t.Fatalf("unexpected embedded step: %#v", got)
+	}
+}
+
+func TestBuildRejectsFilesAndResolvesExactMarkers(t *testing.T) {
+	root := t.TempDir()
+	for name, contents := range map[string]string{"binary.dat": "hello\x00world", "large.txt": strings.Repeat("x", (2<<20)+1), "main.go": "// CT1.10\n// CT1.1\n"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		name, file, pattern string
+		line                int
+		rejected            bool
+	}{
+		{"binary", "binary.dat", "", 0, true},
+		{"oversize", "large.txt", "", 0, true},
+		{"missing", "missing.go", "", 0, true},
+		{"invalid line", "main.go", "", 999, true},
+		{"missing pattern", "main.go", "MISSING", 0, true},
+		{"ambiguous pattern", "main.go", "CT1", 0, true},
+		{"exact marker", "main.go", "", 0, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := json.Marshal(tour.Tour{Title: "1 - Intro", Steps: []tour.Step{{Description: "x", File: tc.file, Pattern: tc.pattern, Line: tc.line}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(root, "main.tour")
+			if err := os.WriteFile(path, data, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			result := Build(root, []workspace.TourRef{{Path: path}}, nil)
+			step := result.Tours[0].Steps[0]
+			if tc.rejected {
+				if step.Error == "" || step.Resolved.Kind != "content" || step.Resolved.Path != "" {
+					t.Fatalf("unsafe resolution: %#v", step)
+				}
+			} else if step.Error != "" || step.Resolved.TargetLine != 2 {
+				t.Fatalf("incorrect marker: %#v", step)
+			}
+		})
 	}
 }

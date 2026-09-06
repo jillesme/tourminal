@@ -119,6 +119,8 @@ func Build(root string, refs []workspace.TourRef, diagnostics []error) Manifest 
 			}
 			if resolveErr != nil {
 				stepEntry.Error = resolveErr.Error()
+				// A failed resolution must not authorize editors to open a path.
+				stepEntry.Resolved = ResolvedEntry{Kind: "content"}
 			}
 			entry.Steps = append(entry.Steps, stepEntry)
 		}
