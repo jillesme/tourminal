@@ -66,3 +66,26 @@ func contains(values []string, substring string) bool {
 	}
 	return false
 }
+
+func TestImplicitMarkersUsePlaybackResolution(t *testing.T) {
+	root := t.TempDir()
+	for _, tc := range []struct{ name, source, marker, want string }{
+		{"number boundary", "// CT1.10\n// CT1.1\n", "", ""},
+		{"missing", "// no marker\n", "MISSING", "does not match"},
+		{"ambiguous", "// CT1.1\n// CT1.1\n", "", "matches main.go 2 times"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(filepath.Join(root, "main.go"), []byte(tc.source), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			item := &tour.Tour{Title: "1 - Intro", StepMarker: tc.marker, Steps: []tour.Step{{Description: "x", File: "main.go"}}}
+			result := Check(root, item)
+			if tc.want == "" && len(result.Errors) != 0 {
+				t.Fatal(result.Errors)
+			}
+			if tc.want != "" && !contains(result.Errors, tc.want) {
+				t.Fatalf("errors = %v, want %q", result.Errors, tc.want)
+			}
+		})
+	}
+}

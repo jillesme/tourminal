@@ -3,10 +3,10 @@ package validation
 import (
 	"fmt"
 	"net/url"
-	"regexp"
 	"sort"
 	"strings"
 
+	"github.com/jillesme/tourminal/internal/follow"
 	"github.com/jillesme/tourminal/internal/resolver"
 	"github.com/jillesme/tourminal/internal/tour"
 	"github.com/jillesme/tourminal/internal/workspace"
@@ -40,8 +40,8 @@ func Check(root string, t *tour.Tour) Result {
 		result.addWarning("ref: %s", warning)
 	}
 
-	for index, step := range t.Steps {
-		validateStep(root, index+1, step, &result)
+	for index := range t.Steps {
+		validateStep(root, index+1, follow.EffectiveStep(t, index), &result)
 	}
 	return result
 }
@@ -81,40 +81,9 @@ func validateStep(root string, number int, step tour.Step, result *Result) {
 		return
 	}
 
-	resolved, err := resolver.Resolve(root, step)
-	if err != nil {
+	if _, err := resolver.Resolve(root, step); err != nil {
 		result.addError("%s: %v", prefix, err)
-		return
 	}
-	if step.Pattern == "" {
-		return
-	}
-	pattern, err := regexp.Compile("(?m)" + step.Pattern)
-	if err != nil {
-		// Resolve normally reports this first, but keep this guard for embedded
-		// or future resolver implementations.
-		result.addError("%s: invalid pattern %q: %v", prefix, step.Pattern, err)
-		return
-	}
-	matches := pattern.FindAllStringIndex(resolved.Source, -1)
-	switch len(matches) {
-	case 0:
-		result.addError("%s: pattern %q does not match %s", prefix, step.Pattern, displayLocation(step))
-	case 1:
-		return
-	default:
-		result.addError("%s: pattern %q matches %s %d times; use a unique anchor", prefix, step.Pattern, displayLocation(step), len(matches))
-	}
-}
-
-func displayLocation(step tour.Step) string {
-	if step.File != "" {
-		return step.File
-	}
-	if step.Contents != "" {
-		return "embedded contents"
-	}
-	return "step content"
 }
 
 // MissingNextTours checks cross-tour links after all tours have loaded.

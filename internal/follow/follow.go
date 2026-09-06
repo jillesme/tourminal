@@ -15,11 +15,11 @@ var numberedTourPattern = regexp.MustCompile(`^#?(\d+)\s*[-:]`)
 // do not specify another anchor.
 func EffectiveStep(item *tour.Tour, index int) tour.Step {
 	step := item.Steps[index]
-	if step.File == "" || step.Line != 0 || step.Pattern != "" {
+	if step.File == "" || step.Line != 0 || step.Pattern != "" || step.Selection != nil {
 		return step
 	}
 	if marker := StepMarkerPrefix(item.Title, item.StepMarker); marker != "" {
-		step.Pattern = regexp.QuoteMeta(marker + "." + strconv.Itoa(index+1))
+		step.Pattern = regexp.QuoteMeta(marker+"."+strconv.Itoa(index+1)) + `\b`
 	}
 	return step
 }

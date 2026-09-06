@@ -95,13 +95,25 @@ func resolveFileContent(root string, step tour.Step, source string) (ResolvedSte
 			target = step.Selection.End.Line
 		}
 	}
-	if target == 0 && step.Pattern != "" {
+	if step.Pattern != "" {
 		pattern, err := regexp.Compile("(?m)" + step.Pattern)
 		if err != nil {
 			return ResolvedStep{}, fmt.Errorf("unsupported pattern %q: %w", step.Pattern, err)
 		}
-		if match := pattern.FindStringIndex(source); match != nil {
-			target = strings.Count(source[:match[0]], "\n") + 1
+		matches := pattern.FindAllStringIndex(source, -1)
+		location := step.File
+		if location == "" {
+			location = "embedded contents"
+		}
+		switch len(matches) {
+		case 0:
+			return ResolvedStep{}, fmt.Errorf("pattern %q does not match %s", step.Pattern, location)
+		case 1:
+			if target == 0 {
+				target = strings.Count(source[:matches[0][0]], "\n") + 1
+			}
+		default:
+			return ResolvedStep{}, fmt.Errorf("pattern %q matches %s %d times; use a unique anchor", step.Pattern, location, len(matches))
 		}
 	}
 	if target == 0 {
